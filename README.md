@@ -7,6 +7,11 @@
 - **실시간 웹 검색**: SerpAPI / Tavily를 통한 기업 뉴스 및 정보 수집
 - **Palantir 통합**: Foundry SDK를 통한 온톨로지 및 데이터셋 접근
 - **LangGraph 워크플로우**: 검색 → 뉴스 → Palantir → 요약 파이프라인
+- **Graph RAG**: Neo4j + ChromaDB 기반 하이브리드 검색
+- **주식 분석**: yfinance + 기술적 지표 (RSI, MACD, 볼린저 밴드)
+- **REST API**: FastAPI 기반 API 서버
+- **웹 대시보드**: 실시간 기업 분석 대시보드
+- **리포트 생성**: HTML/Markdown/JSON 형식 자동 리포트
 - **CLI 인터페이스**: Rich 기반 터미널 UI
 
 ## Installation
@@ -88,6 +93,37 @@ ps graph-search "반도체 실적"
 ps graph-stats
 ```
 
+### API 서버 & 대시보드
+
+```bash
+# API 서버 시작
+ps serve
+
+# 커스텀 포트
+ps serve --port 3000
+
+# 개발 모드 (자동 리로드)
+ps serve --reload
+```
+
+서버 시작 후:
+- 대시보드: http://localhost:8000
+- API 문서: http://localhost:8000/docs
+- ReDoc: http://localhost:8000/redoc
+
+### 리포트 생성
+
+```bash
+# HTML 리포트
+ps report 삼성전자 --output html --save report.html
+
+# Markdown 리포트
+ps report AAPL --output markdown --save report.md
+
+# JSON 리포트
+ps report 삼성전자 --output json
+```
+
 ### 설정 확인
 
 ```bash
@@ -97,22 +133,35 @@ ps config
 ## Architecture
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                        CLI (Typer)                           │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-┌─────────────────────────▼────────────────────────────────────┐
-│                 Agent Layer (LangGraph)                      │
-│  search_node → news_node → palantir_node → summarize_node   │
-└─────────────────────────┬────────────────────────────────────┘
-                          │
-┌─────────────────────────▼────────────────────────────────────┐
-│                      Data Sources                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐  │
-│  │ SerpAPI     │  │ Tavily      │  │ Palantir Foundry    │  │
-│  │ (Google)    │  │ (AI Search) │  │ (Ontology/Datasets) │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────┘  │
-└──────────────────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────┐
+│                   User Interface Layer                             │
+│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐    │
+│  │ CLI (Typer)  │  │ Web Dashboard│  │ REST API (FastAPI)    │    │
+│  └──────┬───────┘  └──────┬───────┘  └───────────┬───────────┘    │
+└─────────┼─────────────────┼──────────────────────┼────────────────┘
+          │                 │                      │
+          └─────────────────┴──────────────────────┘
+                            │
+┌───────────────────────────▼───────────────────────────────────────┐
+│                    Agent Layer (LangGraph)                         │
+│  search → news → palantir → stock → graph_rag → summarize          │
+└───────────────────────────┬───────────────────────────────────────┘
+                            │
+┌───────────────────────────▼───────────────────────────────────────┐
+│                      Storage Layer                                 │
+│  ┌────────────┐  ┌────────────┐  ┌────────────┐                   │
+│  │ Neo4j      │  │ ChromaDB   │  │ Reports    │                   │
+│  │ (Graph DB) │  │ (VectorDB) │  │ (HTML/MD)  │                   │
+│  └────────────┘  └────────────┘  └────────────┘                   │
+└───────────────────────────┬───────────────────────────────────────┘
+                            │
+┌───────────────────────────▼───────────────────────────────────────┐
+│                    External Data Sources                           │
+│  ┌─────────┐ ┌─────────┐ ┌─────────────┐ ┌─────────┐              │
+│  │ SerpAPI │ │ Tavily  │ │ Palantir    │ │yfinance │              │
+│  │         │ │         │ │ Foundry     │ │         │              │
+│  └─────────┘ └─────────┘ └─────────────┘ └─────────┘              │
+└───────────────────────────────────────────────────────────────────┘
 ```
 
 ## Project Structure
@@ -126,8 +175,15 @@ palantir-stock/
 │   ├── search/              # 검색 프로바이더 (SerpAPI, Tavily)
 │   ├── palantir/            # Palantir Foundry 연동
 │   ├── agents/              # LangGraph 에이전트
-│   ├── graph/               # Graph RAG (Phase 2)
-│   └── stock/               # 주식 데이터 (Phase 3)
+│   ├── graph/               # Graph RAG (Neo4j + ChromaDB)
+│   ├── stock/               # 주식 데이터 (yfinance + 지표)
+│   ├── api/                 # FastAPI REST API
+│   │   ├── main.py          # FastAPI 앱 + 대시보드
+│   │   ├── routes/          # API 라우트
+│   │   └── schemas.py       # API 스키마
+│   └── reports/             # 리포트 생성
+│       ├── generator.py     # 리포트 생성기
+│       └── templates.py     # HTML/Markdown 템플릿
 ├── config/
 │   └── settings.py          # pydantic-settings 설정
 ├── tests/                   # pytest 테스트
@@ -158,7 +214,7 @@ pytest --cov=src tests/
 - [x] **Phase 1**: MVP - 웹 검색 에이전트 + Palantir 연동 + CLI
 - [x] **Phase 2**: Graph RAG 통합 (Neo4j 지식 그래프 + ChromaDB)
 - [x] **Phase 3**: 주식 데이터 연동 (yfinance + 기술적 지표)
-- [ ] **Phase 4**: 웹 대시보드 + 고급 기능
+- [x] **Phase 4**: 웹 대시보드 + API 서버 + 리포트 생성
 
 ## Tech Stack
 
@@ -169,8 +225,9 @@ pytest --cov=src tests/
 | LLM | OpenAI GPT-4o |
 | Search | SerpAPI, Tavily |
 | Enterprise Data | Palantir Foundry SDK |
-| Graph DB | Neo4j (Phase 2) |
-| Vector DB | ChromaDB (Phase 2) |
+| Graph DB | Neo4j |
+| Vector DB | ChromaDB |
+| Web Framework | FastAPI, Uvicorn |
 | CLI | Typer, Rich |
 
 ## License

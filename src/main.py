@@ -428,6 +428,68 @@ def graph_search(
 
 
 @app.command()
+def serve(
+    host: str = typer.Option("0.0.0.0", "--host", "-h", help="서버 호스트"),
+    port: int = typer.Option(8000, "--port", "-p", help="서버 포트"),
+    reload: bool = typer.Option(False, "--reload", "-r", help="자동 리로드"),
+):
+    """API 서버를 시작합니다."""
+    setup_logging("INFO")
+    import uvicorn
+
+    console.print(f"[bold blue]Palantir Stock API 서버 시작[/bold blue]")
+    console.print(f"  • 대시보드: http://{host}:{port}")
+    console.print(f"  • API 문서: http://{host}:{port}/docs")
+    console.print(f"  • ReDoc: http://{host}:{port}/redoc")
+    console.print()
+
+    uvicorn.run(
+        "src.api.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        log_level="info",
+    )
+
+
+@app.command("report")
+def generate_report(
+    company: str = typer.Argument(..., help="기업명"),
+    output: str = typer.Option("html", "--output", "-o", help="출력 형식 (html/markdown/json)"),
+    save: Optional[str] = typer.Option(None, "--save", "-s", help="저장 경로"),
+):
+    """기업 분석 리포트를 생성합니다."""
+    setup_logging("WARNING")
+
+    if not validate_config():
+        raise typer.Exit(1)
+
+    from src.agents import CompanyInfoAgent
+    from src.reports import ReportGenerator
+
+    async def run():
+        agent = CompanyInfoAgent(settings)
+        report = await agent.analyze(company)
+        generator = ReportGenerator()
+        return await generator.generate(report, format=output)
+
+    with console.status(f"[bold blue]{company} 리포트 생성 중...[/bold blue]"):
+        content = asyncio.run(run())
+
+    if save:
+        from pathlib import Path
+        Path(save).write_text(content, encoding="utf-8")
+        console.print(f"[green]✓ 리포트 저장: {save}[/green]")
+    else:
+        # HTML은 너무 길어서 요약만 표시
+        if output == "html":
+            console.print("[green]✓ HTML 리포트 생성 완료[/green]")
+            console.print("[dim]--save 옵션으로 파일 저장 가능[/dim]")
+        else:
+            console.print(content)
+
+
+@app.command()
 def config():
     """현재 설정을 확인합니다."""
     table = Table(title="Palantir Stock 설정")
