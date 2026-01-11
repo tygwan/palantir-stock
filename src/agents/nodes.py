@@ -9,6 +9,16 @@ from src.utils import LLMClient, get_logger
 logger = get_logger("agents.nodes")
 
 
+# Graph RAG 관련 임포트 (선택적)
+def _get_graph_components():
+    """Graph RAG 컴포넌트를 지연 로드합니다."""
+    try:
+        from src.graph import HybridRetriever, GraphRepository, VectorStore
+        return HybridRetriever, GraphRepository, VectorStore
+    except ImportError:
+        return None, None, None
+
+
 async def search_node(state: AgentState) -> AgentState:
     """웹 검색을 수행하는 노드.
 
@@ -122,6 +132,51 @@ async def palantir_node(state: AgentState) -> AgentState:
     return state
 
 
+async def graph_rag_node(state: AgentState) -> AgentState:
+    """Graph RAG로 추가 컨텍스트를 수집하는 노드.
+
+    Args:
+        state: 현재 에이전트 상태
+
+    Returns:
+        업데이트된 상태
+    """
+    company_name = state.get("company_name", "")
+    if not company_name:
+        return state
+
+    HybridRetriever, GraphRepository, VectorStore = _get_graph_components()
+
+    if HybridRetriever is None:
+        logger.debug("Graph RAG 모듈을 사용할 수 없음")
+        state["graph_context"] = None
+        return state
+
+    try:
+        retriever = HybridRetriever()
+
+        # 하이브리드 검색 수행
+        logger.info(f"Graph RAG 검색: {company_name}")
+        context = await retriever.get_context_for_query(
+            query=company_name,
+            company_name=company_name,
+            max_context_length=2000,
+        )
+
+        if context:
+            state["graph_context"] = context
+            logger.info(f"Graph RAG 컨텍스트 수집 완료: {len(context)}자")
+        else:
+            state["graph_context"] = None
+            logger.debug("Graph RAG 컨텍스트 없음")
+
+    except Exception as e:
+        logger.warning(f"Graph RAG 조회 실패: {e}")
+        state["graph_context"] = None
+
+    return state
+
+
 async def summarize_node(state: AgentState) -> AgentState:
     """수집된 정보를 요약하는 노드.
 
@@ -136,9 +191,10 @@ async def summarize_node(state: AgentState) -> AgentState:
     search_results = state.get("search_results", [])
     news_items = state.get("news_items", [])
     palantir_data = state.get("palantir_data")
+    graph_context = state.get("graph_context")
 
     # 데이터가 없으면 기본 메시지 반환
-    if not search_results and not news_items and not palantir_data:
+    if not search_results and not news_items and not palantir_data and not graph_context:
         state["summary"] = f"{company_name}에 대한 정보를 수집할 수 없습니다."
         return state
 

@@ -7,6 +7,7 @@ from langgraph.graph import END, StateGraph
 from config.settings import Settings, settings
 from src.agents.nodes import (
     error_handler_node,
+    graph_rag_node,
     news_node,
     palantir_node,
     search_node,
@@ -31,6 +32,7 @@ def create_company_info_graph() -> StateGraph:
     graph.add_node("search", search_node)
     graph.add_node("news", news_node)
     graph.add_node("palantir", palantir_node)
+    graph.add_node("graph_rag", graph_rag_node)
     graph.add_node("summarize", summarize_node)
     graph.add_node("error_handler", error_handler_node)
 
@@ -48,8 +50,10 @@ def create_company_info_graph() -> StateGraph:
     )
 
     # 순차적 엣지
+    # search → news → palantir → graph_rag → summarize
     graph.add_edge("news", "palantir")
-    graph.add_edge("palantir", "summarize")
+    graph.add_edge("palantir", "graph_rag")
+    graph.add_edge("graph_rag", "summarize")
     graph.add_edge("summarize", END)
     graph.add_edge("error_handler", END)
 

@@ -2,6 +2,7 @@
 
 from .nodes import (
     error_handler_node,
+    graph_rag_node,
     news_node,
     palantir_node,
     search_node,
@@ -13,6 +14,7 @@ __all__ = [
     "CompanyInfoAgent",
     "create_company_info_graph",
     "error_handler_node",
+    "graph_rag_node",
     "news_node",
     "palantir_node",
     "search_node",

@@ -188,6 +188,130 @@ def datasets():
     console.print(table)
 
 
+@app.command("graph-init")
+def graph_init():
+    """Graph DB 스키마를 초기화합니다."""
+    setup_logging("INFO")
+
+    from src.graph import get_neo4j_client
+
+    client = get_neo4j_client(settings)
+
+    if not client.is_available:
+        console.print("[yellow]Neo4j 설정이 필요합니다.[/yellow]")
+        console.print("NEO4J_URI, NEO4J_USER, NEO4J_PASSWORD를 설정해주세요.")
+        raise typer.Exit(1)
+
+    async def run():
+        await client.init_schema()
+        return await client.test_connection()
+
+    with console.status("[bold blue]Graph DB 초기화 중...[/bold blue]"):
+        try:
+            success = asyncio.run(run())
+        except Exception as e:
+            console.print(f"[red]Graph DB 초기화 실패: {e}[/red]")
+            raise typer.Exit(1)
+
+    if success:
+        console.print("[green]✓ Graph DB 스키마 초기화 완료[/green]")
+    else:
+        console.print("[red]✗ Graph DB 연결 실패[/red]")
+
+
+@app.command("graph-stats")
+def graph_stats():
+    """Graph DB 및 벡터 저장소 통계를 확인합니다."""
+    setup_logging("WARNING")
+
+    table = Table(title="Graph RAG 저장소 상태")
+    table.add_column("저장소", style="cyan")
+    table.add_column("상태", style="green")
+    table.add_column("통계")
+
+    # Neo4j 상태
+    from src.graph import get_neo4j_client
+    client = get_neo4j_client(settings)
+
+    if client.is_available:
+        try:
+            async def check_neo4j():
+                return await client.test_connection()
+            connected = asyncio.run(check_neo4j())
+            table.add_row(
+                "Neo4j",
+                "[green]연결됨[/green]" if connected else "[red]연결 실패[/red]",
+                settings.neo4j_uri,
+            )
+        except Exception:
+            table.add_row("Neo4j", "[red]오류[/red]", "-")
+    else:
+        table.add_row("Neo4j", "[yellow]미설정[/yellow]", "-")
+
+    # ChromaDB 상태
+    try:
+        from src.graph import VectorStore
+        vs = VectorStore(settings)
+
+        async def check_vector():
+            return await vs.get_stats()
+        stats = asyncio.run(check_vector())
+        table.add_row(
+            "ChromaDB",
+            "[green]사용 가능[/green]",
+            f"{stats['document_count']}개 문서",
+        )
+    except Exception as e:
+        table.add_row("ChromaDB", "[yellow]초기화 필요[/yellow]", str(e)[:30])
+
+    console.print(table)
+
+
+@app.command("graph-search")
+def graph_search(
+    query: str = typer.Argument(..., help="검색 쿼리"),
+    company: str = typer.Option(None, "--company", "-c", help="기업명 필터"),
+    limit: int = typer.Option(10, "--limit", "-n", help="결과 수"),
+):
+    """하이브리드 검색 (Vector + Graph)을 수행합니다."""
+    setup_logging("WARNING")
+
+    from src.graph import HybridRetriever
+
+    async def run():
+        retriever = HybridRetriever()
+        return await retriever.search(
+            query=query,
+            company_name=company,
+            n_results=limit,
+        )
+
+    with console.status("[bold blue]하이브리드 검색 중...[/bold blue]"):
+        try:
+            results = asyncio.run(run())
+        except Exception as e:
+            console.print(f"[red]검색 실패: {e}[/red]")
+            raise typer.Exit(1)
+
+    if not results:
+        console.print("[yellow]검색 결과가 없습니다.[/yellow]")
+        return
+
+    table = Table(title=f"'{query}' 검색 결과")
+    table.add_column("소스", style="cyan", width=8)
+    table.add_column("점수", style="green", width=6)
+    table.add_column("내용", max_width=60)
+
+    for r in results:
+        table.add_row(
+            r.source,
+            f"{r.score:.2f}",
+            r.content[:60] + "..." if len(r.content) > 60 else r.content,
+        )
+
+    console.print(table)
+
+
 @app.command()
 def config():
     """현재 설정을 확인합니다."""
@@ -233,6 +357,20 @@ def config():
         "Palantir Token",
         "***설정됨***" if settings.foundry_token else "미설정",
         "[green]OK[/green]" if settings.foundry_token else "[yellow]OPTIONAL[/yellow]",
+    )
+
+    # Neo4j
+    table.add_row(
+        "Neo4j",
+        settings.neo4j_uri if settings.neo4j_password else "미설정",
+        "[green]OK[/green]" if settings.neo4j_password else "[yellow]OPTIONAL[/yellow]",
+    )
+
+    # ChromaDB
+    table.add_row(
+        "ChromaDB",
+        settings.chroma_persist_dir,
+        "[green]OK[/green]",
     )
 
     # 검색 API 체크
