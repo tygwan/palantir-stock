@@ -16,12 +16,16 @@ authors = [
 dependencies = [
     # LLM & Agent Framework
     "langchain>=0.3.0",
+    "langchain-openai>=0.2.0",
     "langgraph>=0.2.0",
     "openai>=1.0.0",
 
     # Search
     "google-search-results>=2.4.0",  # SerpAPI
     "tavily-python>=0.3.0",
+
+    # Palantir Foundry
+    "foundry-platform-sdk>=0.8.0",
 
     # Graph Database
     "neo4j>=5.0.0",
@@ -34,6 +38,7 @@ dependencies = [
 
     # Utilities
     "pydantic>=2.0.0",
+    "pydantic-settings>=2.0.0",
     "python-dotenv>=1.0.0",
     "httpx>=0.25.0",
     "rich>=13.0.0",
