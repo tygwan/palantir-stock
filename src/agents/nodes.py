@@ -19,6 +19,16 @@ def _get_graph_components():
         return None, None, None
 
 
+# Stock 관련 임포트 (선택적)
+def _get_stock_client():
+    """주식 클라이언트를 지연 로드합니다."""
+    try:
+        from src.stock import get_stock_client
+        return get_stock_client()
+    except ImportError:
+        return None
+
+
 async def search_node(state: AgentState) -> AgentState:
     """웹 검색을 수행하는 노드.
 
@@ -132,6 +142,54 @@ async def palantir_node(state: AgentState) -> AgentState:
     return state
 
 
+async def stock_node(state: AgentState) -> AgentState:
+    """주식 데이터를 조회하는 노드.
+
+    Args:
+        state: 현재 에이전트 상태
+
+    Returns:
+        업데이트된 상태
+    """
+    company_name = state.get("company_name", "")
+    if not company_name:
+        return state
+
+    client = _get_stock_client()
+
+    if client is None:
+        logger.debug("주식 모듈을 사용할 수 없음")
+        state["stock_data"] = None
+        return state
+
+    try:
+        logger.info(f"주식 데이터 조회: {company_name}")
+        analysis = await client.analyze(company_name)
+
+        if analysis:
+            state["stock_data"] = {
+                "ticker": analysis.info.ticker,
+                "name": analysis.info.name,
+                "current_price": analysis.current_price,
+                "change_percent": analysis.change_percent,
+                "recommendation": analysis.recommendation,
+                "indicators": [
+                    {"name": i.name, "value": i.value, "signal": i.signal}
+                    for i in analysis.indicators
+                ],
+            }
+            logger.info(f"주식 데이터 조회 완료: {analysis.info.ticker}")
+        else:
+            state["stock_data"] = None
+            logger.debug(f"주식 데이터를 찾을 수 없음: {company_name}")
+
+    except Exception as e:
+        logger.warning(f"주식 데이터 조회 실패: {e}")
+        state["stock_data"] = None
+
+    return state
+
+
 async def graph_rag_node(state: AgentState) -> AgentState:
     """Graph RAG로 추가 컨텍스트를 수집하는 노드.
 
@@ -192,9 +250,10 @@ async def summarize_node(state: AgentState) -> AgentState:
     news_items = state.get("news_items", [])
     palantir_data = state.get("palantir_data")
     graph_context = state.get("graph_context")
+    stock_data = state.get("stock_data")
 
     # 데이터가 없으면 기본 메시지 반환
-    if not search_results and not news_items and not palantir_data and not graph_context:
+    if not search_results and not news_items and not palantir_data and not graph_context and not stock_data:
         state["summary"] = f"{company_name}에 대한 정보를 수집할 수 없습니다."
         return state
 

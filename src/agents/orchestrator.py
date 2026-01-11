@@ -12,6 +12,7 @@ from src.agents.nodes import (
     palantir_node,
     search_node,
     should_continue,
+    stock_node,
     summarize_node,
 )
 from src.models.schemas import AgentState, CompanyInfo, CompanyReport
@@ -32,6 +33,7 @@ def create_company_info_graph() -> StateGraph:
     graph.add_node("search", search_node)
     graph.add_node("news", news_node)
     graph.add_node("palantir", palantir_node)
+    graph.add_node("stock", stock_node)
     graph.add_node("graph_rag", graph_rag_node)
     graph.add_node("summarize", summarize_node)
     graph.add_node("error_handler", error_handler_node)
@@ -50,9 +52,10 @@ def create_company_info_graph() -> StateGraph:
     )
 
     # 순차적 엣지
-    # search → news → palantir → graph_rag → summarize
+    # search → news → palantir → stock → graph_rag → summarize
     graph.add_edge("news", "palantir")
-    graph.add_edge("palantir", "graph_rag")
+    graph.add_edge("palantir", "stock")
+    graph.add_edge("stock", "graph_rag")
     graph.add_edge("graph_rag", "summarize")
     graph.add_edge("summarize", END)
     graph.add_edge("error_handler", END)

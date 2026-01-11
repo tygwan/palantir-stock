@@ -188,6 +188,121 @@ def datasets():
     console.print(table)
 
 
+@app.command("stock")
+def stock_analyze(
+    ticker: str = typer.Argument(..., help="티커 또는 기업명 (예: 삼성전자, AAPL)"),
+    period: str = typer.Option("3mo", "--period", "-p", help="분석 기간"),
+):
+    """주식 정보를 조회하고 분석합니다."""
+    setup_logging("WARNING")
+
+    from src.stock import get_stock_client
+
+    async def run():
+        client = get_stock_client(settings)
+        return await client.analyze(ticker, period=period)
+
+    with console.status(f"[bold blue]{ticker} 주식 분석 중...[/bold blue]"):
+        try:
+            analysis = asyncio.run(run())
+        except Exception as e:
+            console.print(f"[red]주식 분석 실패: {e}[/red]")
+            raise typer.Exit(1)
+
+    if not analysis:
+        console.print(f"[yellow]'{ticker}' 주식 정보를 찾을 수 없습니다.[/yellow]")
+        return
+
+    # 기본 정보
+    console.print()
+    console.print(Panel(
+        f"[bold]{analysis.info.name}[/bold] ({analysis.info.ticker})\n"
+        f"현재가: {analysis.current_price:,.0f} {analysis.info.currency} "
+        f"({'[green]+' if analysis.change_percent > 0 else '[red]'}{analysis.change_percent:+.2f}%[/])\n"
+        f"추천: [bold]{analysis.recommendation}[/bold]",
+        title="주식 분석",
+        border_style="blue",
+    ))
+
+    # 기술적 지표
+    if analysis.indicators:
+        table = Table(title="기술적 지표")
+        table.add_column("지표", style="cyan")
+        table.add_column("값", style="green")
+        table.add_column("신호")
+        table.add_column("설명")
+
+        for ind in analysis.indicators:
+            signal_color = {
+                "buy": "[green]매수[/green]",
+                "sell": "[red]매도[/red]",
+                "neutral": "[yellow]중립[/yellow]",
+            }.get(ind.signal, ind.signal)
+
+            table.add_row(
+                ind.name,
+                str(ind.value),
+                signal_color,
+                ind.description or "",
+            )
+
+        console.print()
+        console.print(table)
+
+    # 기업 정보
+    if analysis.info.sector:
+        console.print()
+        console.print(f"[dim]섹터: {analysis.info.sector} | 산업: {analysis.info.industry}[/dim]")
+
+
+@app.command("stock-price")
+def stock_price(
+    ticker: str = typer.Argument(..., help="티커 또는 기업명"),
+    period: str = typer.Option("1mo", "--period", "-p", help="조회 기간"),
+):
+    """주가 히스토리를 조회합니다."""
+    setup_logging("WARNING")
+
+    from src.stock import get_stock_client
+
+    async def run():
+        client = get_stock_client(settings)
+        return await client.get_prices(ticker, period=period)
+
+    with console.status(f"[bold blue]{ticker} 주가 조회 중...[/bold blue]"):
+        try:
+            prices = asyncio.run(run())
+        except Exception as e:
+            console.print(f"[red]주가 조회 실패: {e}[/red]")
+            raise typer.Exit(1)
+
+    if not prices:
+        console.print(f"[yellow]'{ticker}' 주가 데이터를 찾을 수 없습니다.[/yellow]")
+        return
+
+    table = Table(title=f"{ticker} 주가 ({period})")
+    table.add_column("날짜", style="cyan")
+    table.add_column("시가", justify="right")
+    table.add_column("고가", justify="right", style="green")
+    table.add_column("저가", justify="right", style="red")
+    table.add_column("종가", justify="right", style="bold")
+    table.add_column("거래량", justify="right")
+
+    # 최근 10일만 표시
+    for p in prices[-10:]:
+        table.add_row(
+            p.date.strftime("%Y-%m-%d"),
+            f"{p.open:,.0f}",
+            f"{p.high:,.0f}",
+            f"{p.low:,.0f}",
+            f"{p.close:,.0f}",
+            f"{p.volume:,}",
+        )
+
+    console.print(table)
+    console.print(f"[dim]총 {len(prices)}일 데이터[/dim]")
+
+
 @app.command("graph-init")
 def graph_init():
     """Graph DB 스키마를 초기화합니다."""

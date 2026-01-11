@@ -66,5 +66,6 @@ class AgentState(TypedDict, total=False):
     news_items: list[NewsItem]
     palantir_data: dict
     graph_context: str | None
+    stock_data: dict | None
     summary: str
     error: str | None

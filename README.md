@@ -73,6 +73,21 @@ ps ontology
 ps datasets
 ```
 
+### 주식 분석
+
+```bash
+# 주식 종합 분석 (RSI, MACD, 볼린저 밴드)
+ps stock 삼성전자
+ps stock AAPL --period 6mo
+
+# 주가 히스토리
+ps stock-price 삼성전자
+
+# Graph RAG 검색
+ps graph-search "반도체 실적"
+ps graph-stats
+```
+
 ### 설정 확인
 
 ```bash
@@ -141,8 +156,8 @@ pytest --cov=src tests/
 ## Roadmap
 
 - [x] **Phase 1**: MVP - 웹 검색 에이전트 + Palantir 연동 + CLI
-- [ ] **Phase 2**: Graph RAG 통합 (Neo4j 지식 그래프)
-- [ ] **Phase 3**: 주식 데이터 연동 (yfinance, Alpha Vantage)
+- [x] **Phase 2**: Graph RAG 통합 (Neo4j 지식 그래프 + ChromaDB)
+- [x] **Phase 3**: 주식 데이터 연동 (yfinance + 기술적 지표)
 - [ ] **Phase 4**: 웹 대시보드 + 고급 기능
 
 ## Tech Stack

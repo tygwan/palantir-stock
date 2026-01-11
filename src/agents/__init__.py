@@ -6,6 +6,7 @@ from .nodes import (
     news_node,
     palantir_node,
     search_node,
+    stock_node,
     summarize_node,
 )
 from .orchestrator import CompanyInfoAgent, create_company_info_graph
@@ -18,5 +19,6 @@ __all__ = [
     "news_node",
     "palantir_node",
     "search_node",
+    "stock_node",
     "summarize_node",
 ]
