@@ -1,37 +1,77 @@
 # Palantir Stock
 
-웹 검색 + Palantir Foundry 기반 기업 정보 수집 및 분석 에이전트 시스템.
+> AI-powered enterprise intelligence agent for company analysis, stock data, and knowledge graph integration.
+
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![LangGraph](https://img.shields.io/badge/LangGraph-Agent-green.svg)](https://langchain-ai.github.io/langgraph/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-API-009688.svg)](https://fastapi.tiangolo.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+
+웹 검색, Palantir Foundry, 주식 데이터를 통합하여 기업 정보를 실시간으로 수집하고 분석하는 AI 에이전트 시스템입니다.
+
+## Highlights
+
+- **Multi-Source Data Collection**: 웹 검색 + Palantir + 주식 데이터 통합
+- **LangGraph Workflow**: 6단계 자동화된 분석 파이프라인
+- **Graph RAG**: Neo4j + ChromaDB 하이브리드 검색
+- **Technical Analysis**: RSI, MACD, 볼린저 밴드 등 기술적 지표
+- **REST API + Dashboard**: FastAPI 기반 웹 서비스
+
+## Quick Start
+
+```bash
+# 1. 설치
+git clone https://github.com/tygwan/palantir-stock.git
+cd palantir-stock
+python -m venv .venv && source .venv/bin/activate
+pip install -e .
+
+# 2. 환경 설정
+cp .env.example .env
+# .env 파일에 API 키 설정
+
+# 3. 실행
+ps 삼성전자              # CLI 분석
+ps serve                # 웹 서버 시작
+```
 
 ## Features
 
-- **실시간 웹 검색**: SerpAPI / Tavily를 통한 기업 뉴스 및 정보 수집
-- **Palantir 통합**: Foundry SDK를 통한 온톨로지 및 데이터셋 접근
-- **LangGraph 워크플로우**: 검색 → 뉴스 → Palantir → 요약 파이프라인
-- **Graph RAG**: Neo4j + ChromaDB 기반 하이브리드 검색
-- **주식 분석**: yfinance + 기술적 지표 (RSI, MACD, 볼린저 밴드)
-- **REST API**: FastAPI 기반 API 서버
-- **웹 대시보드**: 실시간 기업 분석 대시보드
-- **리포트 생성**: HTML/Markdown/JSON 형식 자동 리포트
-- **CLI 인터페이스**: Rich 기반 터미널 UI
+| 기능 | 설명 |
+|------|------|
+| **기업 분석** | 웹 검색 + LLM 기반 종합 분석 |
+| **뉴스 수집** | 실시간 뉴스 검색 및 요약 |
+| **주식 분석** | 시세 조회 + 기술적 지표 계산 |
+| **Graph RAG** | 지식 그래프 기반 관계 분석 |
+| **Palantir** | Foundry 온톨로지/데이터셋 연동 |
+| **리포트** | HTML/Markdown/JSON 자동 생성 |
+| **API** | RESTful API + Swagger 문서 |
+| **대시보드** | 웹 기반 분석 인터페이스 |
 
 ## Installation
 
+### Requirements
+
+- Python 3.11+
+- Docker (Neo4j, Redis 용)
+
+### Setup
+
 ```bash
-# 가상환경 생성
+# 가상환경 생성 및 활성화
 python -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 
 # 의존성 설치
 pip install -e ".[dev]"
+
+# 인프라 시작 (선택)
+docker-compose up -d
 ```
 
 ## Configuration
 
-`.env.example`을 `.env`로 복사하고 API 키를 설정합니다:
-
-```bash
-cp .env.example .env
-```
+`.env` 파일을 생성하고 다음 API 키를 설정합니다:
 
 ```env
 # 필수
@@ -44,124 +84,103 @@ TAVILY_API_KEY=tvly-xxx
 # Palantir (선택)
 FOUNDRY_TOKEN=xxx
 FOUNDRY_HOST=your.palantirfoundry.com
+
+# Graph DB (선택)
+NEO4J_URI=bolt://localhost:7687
+NEO4J_USER=neo4j
+NEO4J_PASSWORD=password123
 ```
 
 ## Usage
 
-### 기업 분석
+### CLI Commands
 
 ```bash
-# 기본 분석
+# 기업 종합 분석
 ps 삼성전자
+ps 삼성전자 --output json --verbose
 
-# JSON 출력
-ps 삼성전자 --output json
+# 뉴스 검색
+ps news 삼성전자 --limit 10
 
-# 상세 로그
-ps 삼성전자 --verbose
-```
-
-### 뉴스 검색
-
-```bash
-ps news 삼성전자
-ps news "삼성전자 실적" --limit 10
-```
-
-### Palantir 연동
-
-```bash
-# 온톨로지 객체 타입 조회
-ps ontology
-
-# 데이터셋 목록 조회
-ps datasets
-```
-
-### 주식 분석
-
-```bash
-# 주식 종합 분석 (RSI, MACD, 볼린저 밴드)
+# 주식 분석
 ps stock 삼성전자
 ps stock AAPL --period 6mo
+ps stock-price 005930.KS
 
-# 주가 히스토리
-ps stock-price 삼성전자
+# Graph RAG
+ps graph-init           # 스키마 초기화
+ps graph-search 반도체   # 하이브리드 검색
+ps graph-stats          # 저장소 상태
 
-# Graph RAG 검색
-ps graph-search "반도체 실적"
-ps graph-stats
-```
+# Palantir
+ps ontology             # 온톨로지 조회
+ps datasets             # 데이터셋 목록
 
-### API 서버 & 대시보드
-
-```bash
-# API 서버 시작
-ps serve
-
-# 커스텀 포트
-ps serve --port 3000
-
-# 개발 모드 (자동 리로드)
-ps serve --reload
-```
-
-서버 시작 후:
-- 대시보드: http://localhost:8000
-- API 문서: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
-### 리포트 생성
-
-```bash
-# HTML 리포트
+# 리포트 생성
 ps report 삼성전자 --output html --save report.html
+ps report AAPL --output markdown
 
-# Markdown 리포트
-ps report AAPL --output markdown --save report.md
+# API 서버
+ps serve                # http://localhost:8000
+ps serve --port 3000 --reload
 
-# JSON 리포트
-ps report 삼성전자 --output json
+# 설정 확인
+ps config
 ```
 
-### 설정 확인
+### API Endpoints
 
-```bash
-ps config
+서버 시작 후 http://localhost:8000/docs 에서 전체 API 문서 확인 가능
+
+| Method | Endpoint | 설명 |
+|--------|----------|------|
+| `POST` | `/api/analyze` | 기업 종합 분석 |
+| `POST` | `/api/news` | 뉴스 검색 |
+| `GET` | `/api/stock/{ticker}` | 주식 분석 |
+| `GET` | `/api/stock/{ticker}/prices` | 주가 히스토리 |
+| `POST` | `/api/graph/search` | 하이브리드 검색 |
+| `POST` | `/api/reports/generate` | 리포트 생성 |
+
+### Python SDK
+
+```python
+import asyncio
+from src.agents import CompanyInfoAgent
+from config.settings import settings
+
+async def main():
+    agent = CompanyInfoAgent(settings)
+    report = await agent.analyze("삼성전자")
+    print(report.summary)
+
+asyncio.run(main())
 ```
 
 ## Architecture
 
 ```
-┌───────────────────────────────────────────────────────────────────┐
-│                   User Interface Layer                             │
-│  ┌──────────────┐  ┌──────────────┐  ┌───────────────────────┐    │
-│  │ CLI (Typer)  │  │ Web Dashboard│  │ REST API (FastAPI)    │    │
-│  └──────┬───────┘  └──────┬───────┘  └───────────┬───────────┘    │
-└─────────┼─────────────────┼──────────────────────┼────────────────┘
-          │                 │                      │
-          └─────────────────┴──────────────────────┘
-                            │
-┌───────────────────────────▼───────────────────────────────────────┐
-│                    Agent Layer (LangGraph)                         │
-│  search → news → palantir → stock → graph_rag → summarize          │
-└───────────────────────────┬───────────────────────────────────────┘
-                            │
-┌───────────────────────────▼───────────────────────────────────────┐
-│                      Storage Layer                                 │
-│  ┌────────────┐  ┌────────────┐  ┌────────────┐                   │
-│  │ Neo4j      │  │ ChromaDB   │  │ Reports    │                   │
-│  │ (Graph DB) │  │ (VectorDB) │  │ (HTML/MD)  │                   │
-│  └────────────┘  └────────────┘  └────────────┘                   │
-└───────────────────────────┬───────────────────────────────────────┘
-                            │
-┌───────────────────────────▼───────────────────────────────────────┐
-│                    External Data Sources                           │
-│  ┌─────────┐ ┌─────────┐ ┌─────────────┐ ┌─────────┐              │
-│  │ SerpAPI │ │ Tavily  │ │ Palantir    │ │yfinance │              │
-│  │         │ │         │ │ Foundry     │ │         │              │
-│  └─────────┘ └─────────┘ └─────────────┘ └─────────┘              │
-└───────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────┐
+│                    User Interface                            │
+│   CLI (Typer)  │  Web Dashboard  │  REST API (FastAPI)      │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                 Agent Layer (LangGraph)                      │
+│                                                              │
+│  ┌─────────┐  ┌──────┐  ┌──────────┐  ┌───────┐  ┌───────┐ │
+│  │ Search  │→ │ News │→ │ Palantir │→ │ Stock │→ │ Graph │ │
+│  └─────────┘  └──────┘  └──────────┘  └───────┘  └───────┘ │
+│                              ↓                               │
+│                      ┌────────────┐                          │
+│                      │ Summarize  │                          │
+│                      └────────────┘                          │
+└────────────────────────┬────────────────────────────────────┘
+                         │
+┌────────────────────────▼────────────────────────────────────┐
+│                    Data Sources                              │
+│  SerpAPI │ Tavily │ Palantir Foundry │ yfinance │ Neo4j    │
+└─────────────────────────────────────────────────────────────┘
 ```
 
 ## Project Structure
@@ -170,28 +189,35 @@ ps config
 palantir-stock/
 ├── src/
 │   ├── main.py              # CLI 엔트리포인트
-│   ├── models/              # Pydantic 데이터 모델
-│   ├── utils/               # LLM, 로깅 유틸리티
-│   ├── search/              # 검색 프로바이더 (SerpAPI, Tavily)
-│   ├── palantir/            # Palantir Foundry 연동
 │   ├── agents/              # LangGraph 에이전트
+│   │   ├── nodes.py         # 워크플로우 노드
+│   │   └── orchestrator.py  # 오케스트레이터
+│   ├── search/              # 웹 검색 (SerpAPI, Tavily)
+│   ├── palantir/            # Palantir Foundry 연동
+│   ├── stock/               # 주식 데이터 + 기술적 지표
 │   ├── graph/               # Graph RAG (Neo4j + ChromaDB)
-│   ├── stock/               # 주식 데이터 (yfinance + 지표)
 │   ├── api/                 # FastAPI REST API
-│   │   ├── main.py          # FastAPI 앱 + 대시보드
-│   │   ├── routes/          # API 라우트
-│   │   └── schemas.py       # API 스키마
-│   └── reports/             # 리포트 생성
-│       ├── generator.py     # 리포트 생성기
-│       └── templates.py     # HTML/Markdown 템플릿
+│   └── reports/             # 리포트 생성기
 ├── config/
-│   └── settings.py          # pydantic-settings 설정
-├── tests/                   # pytest 테스트
-├── docs/
-│   ├── PRD.md              # 제품 요구사항
-│   └── PALANTIR_ACCESS_GUIDE.md
-└── docker-compose.yml       # Neo4j, Redis
+│   └── settings.py          # 설정 관리
+├── tests/                   # 테스트
+├── docs/                    # 문서
+└── docker-compose.yml       # 인프라
 ```
+
+## Tech Stack
+
+| Category | Technology |
+|----------|------------|
+| **Language** | Python 3.11+ |
+| **Agent** | LangGraph, LangChain |
+| **LLM** | OpenAI GPT-4o |
+| **Search** | SerpAPI, Tavily |
+| **Enterprise** | Palantir Foundry SDK |
+| **Graph DB** | Neo4j |
+| **Vector DB** | ChromaDB |
+| **Web** | FastAPI, Uvicorn |
+| **CLI** | Typer, Rich |
 
 ## Development
 
@@ -211,25 +237,25 @@ pytest --cov=src tests/
 
 ## Roadmap
 
-- [x] **Phase 1**: MVP - 웹 검색 에이전트 + Palantir 연동 + CLI
-- [x] **Phase 2**: Graph RAG 통합 (Neo4j 지식 그래프 + ChromaDB)
-- [x] **Phase 3**: 주식 데이터 연동 (yfinance + 기술적 지표)
-- [x] **Phase 4**: 웹 대시보드 + API 서버 + 리포트 생성
+- [x] **Phase 1**: MVP - 웹 검색 에이전트 + Palantir 연동
+- [x] **Phase 2**: Graph RAG (Neo4j + ChromaDB)
+- [x] **Phase 3**: 주식 데이터 + 기술적 지표
+- [x] **Phase 4**: API 서버 + 대시보드 + 리포트
+- [ ] **Phase 5**: 알림 시스템 + 스케줄링
+- [ ] **Phase 6**: 멀티 에이전트 협업
 
-## Tech Stack
+## Contributing
 
-| 카테고리 | 기술 |
-|---------|------|
-| Language | Python 3.11+ |
-| Agent Framework | LangGraph, LangChain |
-| LLM | OpenAI GPT-4o |
-| Search | SerpAPI, Tavily |
-| Enterprise Data | Palantir Foundry SDK |
-| Graph DB | Neo4j |
-| Vector DB | ChromaDB |
-| Web Framework | FastAPI, Uvicorn |
-| CLI | Typer, Rich |
+1. Fork the repository
+2. Create feature branch (`git checkout -b feature/amazing`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing`)
+5. Open a Pull Request
 
 ## License
 
-MIT
+MIT License - see [LICENSE](LICENSE) file for details.
+
+---
+
+**Built with LangGraph + Palantir Foundry + FastAPI**
